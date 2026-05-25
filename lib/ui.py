@@ -1,6 +1,8 @@
 """Shared UI helpers: page setup, sidebar, footer disclosure, and CSS."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import streamlit as st
 
 from lib.config import APP_NAME, APP_TAGLINE, DISCLOSURE
@@ -34,9 +36,26 @@ def setup_page(title: str, icon: str = "📊") -> None:
     st.markdown(_CSS, unsafe_allow_html=True)
 
 
+def refresh_data() -> None:
+    """Clear all cached data so the next run refetches live data."""
+    st.cache_data.clear()
+    st.session_state["_last_refresh"] = datetime.now(timezone.utc)
+
+
 def sidebar(ai_provider: str | None = None) -> None:
-    """Render the shared sidebar."""
+    """Render the shared sidebar, including the top-left Refresh Data control."""
     with st.sidebar:
+        # Top-left refresh: clears caches and reruns so every page refetches.
+        if st.button("🔄 Refresh Data", use_container_width=True, type="primary"):
+            refresh_data()
+            st.rerun()
+        last = st.session_state.get("_last_refresh")
+        if last is not None:
+            st.caption(f"Last refreshed: {last.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+        else:
+            st.caption("Showing latest available data.")
+        st.divider()
+
         st.markdown(f"### {APP_NAME}")
         st.caption(APP_TAGLINE)
         if ai_provider:
