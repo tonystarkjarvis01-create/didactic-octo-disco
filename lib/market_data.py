@@ -84,7 +84,7 @@ def _offline(symbol: str, msg: str = "Live data unavailable") -> Quote:
     return Quote(symbol=symbol, ok=False, error=msg)
 
 
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=45, show_spinner=False)
 def get_quote(symbol: str, name: str = "") -> Quote:
     """Fetch a single quote. Never raises."""
     if yf is None:
@@ -118,7 +118,7 @@ def get_quotes(symbols: dict[str, str]) -> list[Quote]:
     return [get_quote(sym, name) for sym, name in symbols.items()]
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=120, show_spinner=False)
 def get_history(symbol: str, period_label: str = "1Y") -> pd.DataFrame:
     """Return OHLCV history for a period label. Empty frame on failure."""
     if yf is None:
@@ -158,7 +158,7 @@ class Fundamentals:
         return self.info.get(key, default)
 
 
-@st.cache_data(ttl=1800, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def get_fundamentals(symbol: str) -> Fundamentals:
     if yf is None:
         return Fundamentals(symbol, ok=False, error="yfinance not installed")
@@ -198,7 +198,7 @@ def get_etf_profile(symbol: str) -> dict:
         return {}
 
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=120, show_spinner=False)
 def get_movers(symbols: list[str]) -> pd.DataFrame:
     """Build a sorted gainers/losers table from a symbol list."""
     rows = []

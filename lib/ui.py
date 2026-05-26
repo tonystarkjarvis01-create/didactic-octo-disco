@@ -34,6 +34,12 @@ def setup_page(title: str, icon: str = "📊") -> None:
         initial_sidebar_state="expanded",
     )
     st.markdown(_CSS, unsafe_allow_html=True)
+    # Live reset on first access of each new visitor session, so everyone
+    # lands on freshly-fetched data rather than a previous visitor's cache.
+    if not st.session_state.get("_session_inited"):
+        st.cache_data.clear()
+        st.session_state["_session_inited"] = True
+        st.session_state["_last_refresh"] = datetime.now(timezone.utc)
 
 
 def refresh_data() -> None:

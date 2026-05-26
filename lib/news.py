@@ -11,7 +11,7 @@ except Exception:  # pragma: no cover
     yf = None
 
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def get_news(symbol: str, limit: int = 15) -> list[dict]:
     """Return a list of normalized headline dicts. Empty list on failure."""
     if yf is None:
