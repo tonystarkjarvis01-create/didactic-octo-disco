@@ -55,6 +55,12 @@ def sidebar(ai_provider: str | None = None) -> None:
         if st.button("🔄 Refresh Data", use_container_width=True, type="primary"):
             refresh_data()
             st.rerun()
+        from lib.market_data import latest_session_date
+
+        session_date = latest_session_date()
+        if session_date:
+            st.caption(f"📅 Market data as of: **{session_date}**")
+            st.caption("(latest completed trading session — markets are closed weekends & holidays)")
         last = st.session_state.get("_last_refresh")
         if last is not None:
             st.caption(f"Last refreshed: {last.strftime('%Y-%m-%d %H:%M:%S UTC')}")

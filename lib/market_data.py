@@ -131,6 +131,23 @@ def get_history(symbol: str, period_label: str = "1Y") -> pd.DataFrame:
         return pd.DataFrame()
 
 
+@st.cache_data(ttl=120, show_spinner=False)
+def latest_session_date(symbol: str = "^GSPC") -> str:
+    """Date of the most recent available trading session, or '' if unknown.
+
+    Used to label the dashboard so weekend/holiday gaps (e.g. data dated the
+    prior Friday on a Monday holiday) are self-explanatory rather than looking
+    stale.
+    """
+    df = get_history(symbol, "5D")
+    if df is None or df.empty:
+        return ""
+    try:
+        return df.index[-1].strftime("%Y-%m-%d")
+    except Exception:
+        return ""
+
+
 @st.cache_data(ttl=600, show_spinner=False)
 def get_prev_close(symbol: str) -> float | None:
     """Yesterday's close — used to baseline 1D charts across overnight gaps."""
