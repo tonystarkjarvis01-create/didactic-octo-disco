@@ -97,27 +97,56 @@ if fund.ok:
             st.metric(label, disp)
 
 st.divider()
-st.subheader("AI research notes")
-if st.button("Generate notes"):
-    ctx = {
-        "symbol": symbol,
-        "name": fund.get("longName", symbol) if fund.ok else symbol,
-        "price": quote.price if quote.ok else None,
-        "change_pct": quote.change_pct if quote.ok else None,
-        "technical": {
-            "score": tech_card.score,
-            "label": tech_card.label,
-            "factors": tech_card.factors,
-        },
-        "fundamental": {
-            "score": fund_card.score,
-            "label": fund_card.label,
-            "factors": fund_card.factors,
-        },
-    }
-    with st.spinner("Generating…"):
-        text, provider = analyze(ctx)
-    st.caption(f"Provider: {provider}")
-    st.markdown(text)
+st.subheader("🤖 Claude research summary")
+
+info = fund.info if fund.ok else {}
+ctx = {
+    "symbol": symbol,
+    "name": info.get("longName", symbol),
+    "price": quote.price if quote.ok else None,
+    "change_pct": quote.change_pct if quote.ok else None,
+    "technical": {
+        "score": tech_card.score,
+        "label": tech_card.label,
+        "factors": tech_card.factors,
+    },
+    "fundamental": {
+        "score": fund_card.score,
+        "label": fund_card.label,
+        "factors": fund_card.factors,
+    },
+    "extra": {
+        "sector": info.get("sector"),
+        "industry": info.get("industry"),
+        "marketCap": info.get("marketCap"),
+        "trailingPE": info.get("trailingPE"),
+        "forwardPE": info.get("forwardPE"),
+        "profitMargins": info.get("profitMargins"),
+        "revenueGrowth": info.get("revenueGrowth"),
+        "returnOnEquity": info.get("returnOnEquity"),
+        "dividendYield": info.get("dividendYield"),
+        "beta": info.get("beta"),
+        "fiftyTwoWeekHigh": info.get("fiftyTwoWeekHigh"),
+        "fiftyTwoWeekLow": info.get("fiftyTwoWeekLow"),
+        "businessSummary": (info.get("longBusinessSummary") or "")[:800],
+    },
+}
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def _summary(sym: str, signature: str):
+    # sym + signature form the cache key; signature changes when key metrics
+    # change, so the summary regenerates when the underlying data moves.
+    return analyze(ctx)
+
+
+sig = f"{ctx['price']}|{tech_card.score}|{fund_card.score}"
+with st.spinner("Generating summary with Claude Opus 4.7…"):
+    text, provider = _summary(symbol, sig)
+st.caption(f"Provider: {provider}")
+st.markdown(text)
+if st.button("↻ Regenerate summary"):
+    _summary.clear()
+    st.rerun()
 
 footer()

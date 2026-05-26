@@ -20,10 +20,21 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "llama3.1"
 
 _SYSTEM = (
-    "You are an educational market-research assistant. Write neutral, factual "
-    "analysis of the provided metrics. NEVER recommend buying, selling, or "
-    "holding. NEVER predict prices or give price targets. Avoid advice language "
-    "entirely. Frame everything as context for the reader's own research."
+    "You are an educational equity-research assistant. Given metrics for a "
+    "company, write a balanced, structured research summary that helps a reader "
+    "form their OWN view. Cover both sides honestly.\n\n"
+    "Use exactly these markdown sections:\n"
+    "**Overview** — 1-2 sentences on what the company does and recent price action.\n"
+    "**Reasons one might view it favorably** — bullet points grounded in the "
+    "provided metrics (growth, margins, momentum, valuation, etc.).\n"
+    "**Reasons for caution / risks** — bullet points on weaknesses, rich "
+    "valuation, downtrends, or unknowns.\n"
+    "**Valuation context** — how the multiples compare to typical ranges, neutrally.\n"
+    "**What to watch** — concrete data points a researcher could track next.\n\n"
+    "STRICT RULES: NEVER tell the reader to buy, sell, or hold. NEVER say "
+    "whether it 'is a good investment' or give a verdict/score/rating. NEVER "
+    "predict prices or give price targets. Present both sides; do not lean. "
+    "This is educational context for the reader's own due diligence, not advice."
 )
 
 
@@ -73,8 +84,8 @@ def _anthropic_generate(prompt: str) -> str | None:
 
         client = anthropic.Anthropic(api_key=key)
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=700,
+            model="claude-opus-4-7",
+            max_tokens=1300,
             system=_SYSTEM,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -86,47 +97,82 @@ def _anthropic_generate(prompt: str) -> str | None:
 
 
 def _offline_generate(ctx: dict) -> str:
-    """Compose a neutral narrative directly from computed metrics."""
+    """Compose a balanced, structured summary directly from computed metrics."""
     sym = ctx.get("symbol", "the security")
     name = ctx.get("name", sym)
     price = ctx.get("price")
     chg = ctx.get("change_pct")
     tech = ctx.get("technical", {})
     fund = ctx.get("fundamental", {})
+    extra = ctx.get("extra", {})
 
-    lines = [f"### Research notes — {name} ({sym})", ""]
-    if price is not None:
-        move = ""
-        if isinstance(chg, (int, float)):
-            move = f", {'up' if chg >= 0 else 'down'} {abs(chg):.2f}% on the session"
-        lines.append(f"The last observed price is **{price:,.2f}**{move}.")
+    favorable: list[str] = []
+    caution: list[str] = []
 
-    if tech:
+    # Derive balanced bullet points from the supplied factors/metrics.
+    for n, note in tech.get("factors", []):
+        text = f"{n} ({note})" if note else n
+        low = f"{n} {note}".lower()
+        if any(k in low for k in ("above", "+")) and "below" not in low:
+            favorable.append(text)
+        elif any(k in low for k in ("below", "subdued", "-")):
+            caution.append(text)
+    for n, _ in fund.get("factors", []):
+        favorable.append(n)
+    margin = extra.get("profitMargins")
+    if isinstance(margin, (int, float)) and margin < 0:
+        caution.append(f"Negative profit margin ({margin*100:.1f}%)")
+    pe = extra.get("trailingPE")
+    if isinstance(pe, (int, float)) and pe > 35:
+        caution.append(f"Elevated trailing P/E ({pe:.1f})")
+
+    lines = [f"### Research summary — {name} ({sym})", ""]
+    lines.append("**Overview**")
+    move = ""
+    if isinstance(chg, (int, float)):
+        move = f", {'up' if chg >= 0 else 'down'} {abs(chg):.2f}% on the session"
+    sector = extra.get("sector")
+    biz = f"{name} operates in the {sector} sector. " if sector else ""
+    lines.append(f"{biz}The last observed price is **{price:,.2f}**{move}." if price is not None else biz or "Limited data available.")
+
+    lines.append("\n**Reasons one might view it favorably**")
+    lines += [f"- {x}" for x in (favorable or ["Insufficient data to list factors."])]
+
+    lines.append("\n**Reasons for caution / risks**")
+    lines += [f"- {x}" for x in (caution or ["No specific risk flags surfaced from the available metrics."])]
+
+    lines.append("\n**Valuation context**")
+    if isinstance(pe, (int, float)):
         lines.append(
-            f"\n**Technical context** — composite reading {tech.get('score','—')}/100 "
-            f"({tech.get('label','').lower()}). "
-            + "; ".join(f"{n}: {note}" for n, note in tech.get("factors", []) if note) + "."
+            f"Trailing P/E is {pe:.1f}; broad-market averages have historically "
+            "sat in the high-teens to low-20s, so read this relative to the "
+            "company's growth and sector — higher multiples imply higher growth "
+            "expectations baked in."
         )
-    if fund:
-        lines.append(
-            f"\n**Fundamental context** — composite reading {fund.get('score','—')}/100 "
-            f"({fund.get('label','').lower()}). "
-            + "; ".join(f"{n}" for n, _ in fund.get("factors", [])) + "."
-        )
+    else:
+        lines.append("Valuation multiples were not available for this security.")
+
+    lines.append("\n**What to watch**")
+    lines.append(
+        "- Upcoming earnings vs. expectations\n- Revenue/margin trend over the "
+        "next few quarters\n- Whether price holds above or below its moving "
+        "averages\n- Sector and macro conditions"
+    )
 
     lines.append(
-        "\nThese observations summarize publicly available metrics for "
-        "educational and personal-research purposes. They are not a "
-        "recommendation to buy, sell, or hold, and they are not a forecast. "
-        "Verify all figures independently before drawing conclusions."
+        "\n---\n*This is a balanced educational summary generated from public "
+        "metrics. It is **not** a recommendation to buy, sell, or hold, not a "
+        "verdict on whether to invest, and not a forecast. Do your own research.*"
     )
     return "\n".join(lines)
 
 
 def _build_prompt(ctx: dict) -> str:
     return (
-        "Write a short (3-4 paragraph) neutral research note for the following "
-        "metrics. Do not give advice or predictions.\n\n"
+        "Write a balanced educational research summary for the company below, "
+        "using the required section structure. Present both the favorable and "
+        "the cautionary side. Do NOT give a verdict, rating, or buy/sell/hold "
+        "advice, and do NOT predict prices.\n\n"
         + json.dumps(ctx, default=str, indent=2)
     )
 
