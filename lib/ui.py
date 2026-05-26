@@ -73,10 +73,47 @@ def sidebar(ai_provider: str | None = None) -> None:
         if ai_provider:
             st.markdown(f"AI provider: `{ai_provider}`")
         st.divider()
+
+        # Learning Mode: when ON (default) the app shows investing-focused
+        # explanations and "how to read it" notes. Turning it OFF hides them
+        # for a cleaner "pro" view. Stored in session_state so it persists
+        # across pages within a session.
+        st.session_state.setdefault("learning_mode", True)
+        st.toggle(
+            "🎓 Learning mode",
+            key="learning_mode",
+            help="Show investing explanations and 'how to read it' notes on "
+            "every page. Turn off for a cleaner view once you know the ropes.",
+        )
+        st.divider()
+
         st.caption(
             "Educational use only. No buy/sell/hold recommendations are "
             "offered anywhere in this app."
         )
+
+
+def learning_on() -> bool:
+    """True when Learning Mode is enabled (the default)."""
+    return st.session_state.get("learning_mode", True)
+
+
+def explain(label: str, body: str) -> None:
+    """Render a collapsible 'ℹ️ explain this' note — only in Learning Mode.
+
+    Use this to keep pages clean while putting investing help one click away.
+    ``body`` is markdown; aim it at someone who knows finance but is new to
+    applying it to picking investments.
+    """
+    if learning_on():
+        with st.expander(f"ℹ️ {label}"):
+            st.markdown(body)
+
+
+def page_intro(body: str) -> None:
+    """Short 'what am I looking at and how to read it' intro — Learning Mode only."""
+    if learning_on():
+        st.info(body, icon="🎓")
 
 
 def footer() -> None:

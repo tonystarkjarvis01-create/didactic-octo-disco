@@ -13,13 +13,21 @@ from lib.market_data import (
     get_prev_close,
     get_quote,
 )
+from lib.learn import term
 from lib.signals import at_a_glance, fundamental_score, technical_score
-from lib.ui import footer, setup_page, sidebar
+from lib.ui import explain, footer, page_intro, setup_page, sidebar
 
 setup_page("Stock Analyzer", "🔎")
 sidebar(active_provider())
 
 st.title("🔎 Stock Analyzer")
+page_intro(
+    "Type a ticker (e.g. **AAPL**, or **BHP.AX** for the Australian exchange) to "
+    "research one company. You'll get its price chart, the headline valuation and "
+    "health numbers, two neutral 'composite' gauges that summarise the data, and a "
+    "written research summary. Everything here describes the data so *you* can decide "
+    "what's worth a closer look — it never tells you to buy or sell."
+)
 
 c1, c2, c3 = st.columns([2, 1, 1])
 with c1:
@@ -54,6 +62,14 @@ st.plotly_chart(
     price_chart(df, view=view, title=f"{symbol} · {period}", baseline_price=baseline),
     use_container_width=True,
 )
+explain(
+    "How to read this price chart",
+    "The chart plots price over your chosen timeframe. Switch the **View** to compare "
+    "styles:\n"
+    "- **Line/Area** — clean overall trend.\n"
+    "- **Candlestick** — each candle is one period's open/high/low/close.\n\n"
+    + term("Candlestick"),
+)
 
 st.divider()
 fund = get_fundamentals(symbol)
@@ -68,6 +84,18 @@ with g2:
 with g3:
     st.markdown("**At a glance**")
     st.markdown(at_a_glance(tech_card, fund_card))
+explain(
+    "What the two composite gauges mean",
+    "These are **neutral summaries of the data**, scored 0–100 — not ratings or "
+    "advice.\n"
+    "- **Technical composite** blends trend (price vs. its moving averages) and "
+    "momentum (RSI) — i.e. what the *price action* is doing.\n"
+    "- **Fundamental composite** blends valuation, profitability, and growth — i.e. "
+    "what the *business* looks like.\n\n"
+    "A higher score just means more of those inputs are reading firm right now; it is "
+    "**not** a signal to buy. Use it to spot what to investigate, then read the actual "
+    "numbers below.",
+)
 
 if fund.ok:
     st.subheader("Key fundamentals")
@@ -95,6 +123,11 @@ if fund.ok:
             else:
                 disp = "—"
             st.metric(label, disp)
+
+    explain("How to read the valuation numbers (P/E)", term("P/E ratio (price-to-earnings)"))
+    explain("How to read dividend yield", term("Dividend yield"))
+    explain("How to read beta (volatility)", term("Beta"))
+    explain("How to read market cap (company size)", term("Market cap"))
 
 st.divider()
 st.subheader("🤖 Claude research summary")
