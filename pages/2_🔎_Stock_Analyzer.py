@@ -141,7 +141,7 @@ def _summary(sym: str, signature: str):
 
 
 sig = f"{ctx['price']}|{tech_card.score}|{fund_card.score}"
-with st.spinner("Generating summary with Claude Opus 4.7…"):
+with st.spinner("Generating summary with Claude Sonnet 4.6…"):
     text, provider = _summary(symbol, sig)
 st.caption(f"Provider: {provider}")
 st.markdown(text)

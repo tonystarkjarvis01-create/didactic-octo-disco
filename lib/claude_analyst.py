@@ -84,7 +84,7 @@ def _anthropic_generate(prompt: str) -> str | None:
 
         client = anthropic.Anthropic(api_key=key)
         msg = client.messages.create(
-            model="claude-opus-4-7",
+            model="claude-sonnet-4-6",
             max_tokens=1300,
             system=_SYSTEM,
             messages=[{"role": "user", "content": prompt}],
