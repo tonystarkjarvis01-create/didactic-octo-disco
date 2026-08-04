@@ -1,0 +1,20 @@
+{
+  "name": "xk-agency-attribution",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CLI scripts for XK Agency's attribution, weekly output, and update-turnaround tracking.",
+  "type": "commonjs",
+  "scripts": {
+    "add-client": "node add-client.js",
+    "log-video": "node log-video.js",
+    "log-patch-note": "node log-patch-note.js",
+    "status": "node status.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

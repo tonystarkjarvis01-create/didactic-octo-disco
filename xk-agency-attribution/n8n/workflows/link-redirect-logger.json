@@ -1,0 +1,137 @@
+{
+  "name": "XK Attribution - Link Redirect & Click Logger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "r/:code",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Link Click Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "xk-link-redirect"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "tracked_links",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "code",
+              "condition": "eq",
+              "keyValue": "={{ $json.params.code }}"
+            }
+          ]
+        },
+        "returnAll": false,
+        "limit": 1
+      },
+      "id": "lookup-link",
+      "name": "Look Up Tracked Link",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_YOUR_SUPABASE_CREDENTIAL_ID",
+          "name": "XK Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-found",
+      "name": "Link Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "link_clicks",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "tracked_link_id", "fieldValue": "={{ $json[0].id }}" },
+            { "fieldId": "referrer", "fieldValue": "={{ $('Link Click Webhook').item.json.headers.referer || '' }}" },
+            { "fieldId": "user_agent", "fieldValue": "={{ $('Link Click Webhook').item.json.headers['user-agent'] || '' }}" }
+          ]
+        }
+      },
+      "id": "log-click",
+      "name": "Log Click",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [900, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_YOUR_SUPABASE_CREDENTIAL_ID",
+          "name": "XK Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "redirect",
+        "redirectURL": "={{ $('Look Up Tracked Link').item.json[0].destination_url }}",
+        "options": { "responseCode": 302 }
+      },
+      "id": "redirect",
+      "name": "Redirect To Destination",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Link not found.",
+        "options": { "responseCode": 404 }
+      },
+      "id": "not-found",
+      "name": "Respond 404",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 420]
+    }
+  ],
+  "connections": {
+    "Link Click Webhook": {
+      "main": [[{ "node": "Look Up Tracked Link", "type": "main", "index": 0 }]]
+    },
+    "Look Up Tracked Link": {
+      "main": [[{ "node": "Link Found?", "type": "main", "index": 0 }]]
+    },
+    "Link Found?": {
+      "main": [
+        [{ "node": "Log Click", "type": "main", "index": 0 }],
+        [{ "node": "Respond 404", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log Click": {
+      "main": [[{ "node": "Redirect To Destination", "type": "main", "index": 0 }]]
+    }
+  }
+}
